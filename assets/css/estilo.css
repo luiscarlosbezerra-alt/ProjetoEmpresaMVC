@@ -51,6 +51,81 @@ body {
     -webkit-font-smoothing: antialiased;
 }
 
+.flash-message {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    max-width: 900px;
+    margin: 20px auto;
+    padding: 16px 20px;
+    border: 1px solid;
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-sm);
+}
+
+.flash-message strong {
+    display: block;
+    margin-bottom: 2px;
+}
+
+.flash-message p {
+    margin: 0;
+}
+
+.flash-message-icon {
+    display: grid;
+    flex: 0 0 24px;
+    width: 24px;
+    height: 24px;
+    place-items: center;
+    border-radius: 50%;
+    font-weight: 700;
+}
+
+.flash-message-success {
+    color: #166534;
+    background: #f0fdf4;
+    border-color: #bbf7d0;
+}
+
+.flash-message-success .flash-message-icon {
+    color: #fff;
+    background: #16a34a;
+}
+
+.flash-message-error {
+    color: #991b1b;
+    background: #fef2f2;
+    border-color: #fecaca;
+}
+
+.flash-message-error .flash-message-icon {
+    color: #fff;
+    background: #dc2626;
+}
+
+.flash-message-warning {
+    color: #854d0e;
+    background: #fefce8;
+    border-color: #fde68a;
+}
+
+.flash-message-warning .flash-message-icon {
+    color: #fff;
+    background: #ca8a04;
+}
+
+.flash-message-info {
+    color: #1e40af;
+    background: #eff6ff;
+    border-color: #bfdbfe;
+}
+
+.flash-message-info .flash-message-icon {
+    color: #fff;
+    background: #2563eb;
+}
+
 
 /* =========================================
    CABEÇALHO E NAVEGAÇÃO
@@ -536,6 +611,10 @@ h2::before {
 .acoes-tabela {
     /* Mantém os botões alinhados na mesma linha da tabela. */
     white-space: nowrap;
+}
+
+.form-exclusao {
+    display: inline;
 }
 
 .btn-acao {

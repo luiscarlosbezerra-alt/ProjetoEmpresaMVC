@@ -7,9 +7,9 @@ include __DIR__ . '/include/cabecalho.php'; ?>
 <form action="index.php?action=atualizarCargo" method="POST" class="form-grupo">
     <input type="hidden" name="id" value="<?= $cargo['codCargo'] ?>">
     <label class="form-label">Nome do Cargo:</label><br>
-    <input type="text" name="nome" class="form-input" required value="<?= htmlspecialchars($cargo['nomeCargo']) ?>"><br>
+    <input type="text" name="nome" class="form-input" required maxlength="100" value="<?= htmlspecialchars($cargo['nomeCargo']) ?>"><br>
     <label class="form-label">Salário Base (R$):</label><br>
-    <input type="text" inputmode="decimal" name="salario" class="form-input" required placeholder="R$ 0,00" data-mask="moeda" value="<?= htmlspecialchars($cargo['salario']) ?>"><br>
+    <input type="text" inputmode="decimal" name="salario" class="form-input" required maxlength="14" placeholder="R$ 0,00" data-mask="moeda" value="<?= htmlspecialchars($cargo['salario']) ?>"><br>
     <button type="submit" class="btn-save">Salvar Alterações</button>
 </form>
 

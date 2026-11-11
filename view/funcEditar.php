@@ -7,7 +7,7 @@ include __DIR__ . '/include/cabecalho.php'; ?>
 <form action="index.php?action=atualizarFunc" method="POST" class="form-grupo">
     <input type="hidden" name="funcional" value="<?= $funcionario['funcional'] ?>">
     <label class="form-label">Nome do Funcionário:</label><br>
-    <input type="text" name="nome" class="form-input" required value="<?= htmlspecialchars($funcionario['nome']) ?>"><br>
+    <input type="text" name="nome" class="form-input" required maxlength="40" value="<?= htmlspecialchars($funcionario['nome']) ?>"><br>
     <label class="form-label">CPF:</label><br>
     <input type="text" name="cpf" class="form-input" required maxlength="14" inputmode="numeric" data-mask="cpf" value="<?= htmlspecialchars($funcionario['cpf']) ?>"><br>
     <label class="form-label">Telefone:</label><br>
@@ -15,10 +15,10 @@ include __DIR__ . '/include/cabecalho.php'; ?>
     <fieldset class="endereco-campos">
         <legend>Endereço</legend>
         <label class="form-label" for="cep">CEP</label>
-        <input type="text" id="cep" name="endereco[cep]" class="form-input" required maxlength="9" inputmode="numeric" autocomplete="postal-code" placeholder="00000-000" data-mask="cep" value="<?= htmlspecialchars($funcionario['cep'] ?? '') ?>" aria-describedby="cep-status">
-        <p id="cep-status" class="cep-status" role="status" aria-live="polite">Digite o CEP para preencher o endereço.</p>
+        <input type="text" id="cep" name="endereco[cep]" class="form-input" required maxlength="9" inputmode="numeric" autocomplete="postal-code" placeholder="00000-000" data-mask="cep" value="<?= htmlspecialchars($funcionario['cep'] ?? '') ?>" aria-describedby="mensagemCep">
+        <small id="mensagemCep" class="cep-status" role="status" aria-live="polite">Saia do campo CEP para consultar ou preencha o endereço manualmente.</small>
         <label class="form-label" for="logradouro">Logradouro</label>
-        <input type="text" id="logradouro" name="endereco[logradouro]" class="form-input" required maxlength="150" autocomplete="address-line1" value="<?= htmlspecialchars($funcionario['logradouro'] ?? $funcionario['endereco'] ?? '') ?>">
+        <input type="text" id="logradouro" name="endereco[logradouro]" class="form-input" required maxlength="150" autocomplete="address-line1" value="<?= htmlspecialchars($funcionario['logradouro'] ?? '') ?>">
         <div class="endereco-linha">
             <div>
                 <label class="form-label" for="numero">Número</label>

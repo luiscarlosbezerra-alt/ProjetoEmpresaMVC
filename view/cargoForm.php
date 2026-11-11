@@ -12,6 +12,7 @@
             name="nome" 
             class="form-input" 
             required 
+            maxlength="100"
             placeholder="Ex: Analista"
         > <br>
         <label class="form-label">Salário Base (R$):</label><br>
@@ -21,6 +22,7 @@
             name="salario" 
             class="form-input" 
             required 
+            maxlength="14"
             placeholder="R$ 0,00"
             data-mask="moeda"
         > <br>
@@ -28,5 +30,5 @@
     </form>
 
 <?php 
-    include __DIR__."/INCLUDE/rodape.php";
+    include __DIR__."/include/rodape.php";
 ?>

@@ -122,6 +122,12 @@ class SolicitacaoController
 
     private function dataValida($valor)
     {
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $valor)
+            || (int) substr($valor, 0, 4) < 1000
+            || (int) substr($valor, 0, 4) > 9999) {
+            return null;
+        }
+
         $data = DateTime::createFromFormat('!Y-m-d', $valor);
         return $data && $data->format('Y-m-d') === $valor ? $data : null;
     }

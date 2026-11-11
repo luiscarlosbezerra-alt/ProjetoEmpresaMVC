@@ -8,22 +8,23 @@
             $conexao->beginTransaction();
 
             try {
+                $idEndereco = $this->salvarEndereco($conexao, $endereco);
                 $sql = "INSERT INTO dboFuncionario
-                        (nome, cpf, telefone, endereco, codDepartamento, codCargo)
+                        (nome, cpf, telefone, numero, complemento, idEndereco, codDepartamento, codCargo)
                         VALUES
-                        (:nome, :cpf, :telefone, :endereco, :codDepartamento, :codCargo)";
+                        (:nome, :cpf, :telefone, :numero, :complemento, :idEndereco, :codDepartamento, :codCargo)";
                 $stmt = $conexao->prepare($sql);
                 $stmt->execute([
                     ':nome' => $nome,
                     ':cpf' => $cpf,
                     ':telefone' => $telefone,
-                    ':endereco' => $this->formatarEndereco($endereco),
+                    ':numero' => $endereco['numero'],
+                    ':complemento' => $endereco['complemento'] !== '' ? $endereco['complemento'] : null,
+                    ':idEndereco' => $idEndereco,
                     ':codDepartamento' => $codDep,
                     ':codCargo' => $codCargo,
                 ]);
 
-                $funcional = (int) $conexao->lastInsertId();
-                $this->salvarEndereco($conexao, $funcional, $endereco);
                 $conexao->commit();
                 return true;
             } catch (Throwable $erro) {
@@ -36,11 +37,11 @@
         // Lista funcionários trazendo também os nomes dos relacionamentos.
         public function listarTodos(){
             $sql = "SELECT f.*, d.nomeDepartamento, c.nomeCargo,
-                        e.cep, e.logradouro, e.numero, e.complemento, e.bairro, e.cidade, e.uf
+                        e.cep, e.logradouro, e.bairro, e.cidade, e.uf
                 FROM dboFuncionario f
                 INNER JOIN dboDepartamento d ON f.codDepartamento = d.codDepartamento
                 INNER JOIN dboCargo c ON f.codCargo = c.codCargo
-                LEFT JOIN dboEndereco e ON f.funcional = e.funcional
+                LEFT JOIN dboEndereco e ON f.idEndereco = e.idEndereco
                 ORDER BY f.funcional ASC";
             $stmt= Conexao::getConn()->prepare($sql);
             $stmt->execute();
@@ -52,21 +53,24 @@
             $conexao->beginTransaction();
 
             try {
+                $idEndereco = $this->salvarEndereco($conexao, $endereco);
                 $sql = "UPDATE dboFuncionario SET nome = :nome, cpf = :cpf, telefone = :telefone,
-                        endereco = :endereco, codDepartamento = :codDepartamento, codCargo = :codCargo
+                        numero = :numero, complemento = :complemento, idEndereco = :idEndereco,
+                        codDepartamento = :codDepartamento, codCargo = :codCargo
                         WHERE funcional = :id";
                 $stmt = $conexao->prepare($sql);
                 $stmt->execute([
                     ':nome' => $nome,
                     ':cpf' => $cpf,
                     ':telefone' => $telefone,
-                    ':endereco' => $this->formatarEndereco($endereco),
+                    ':numero' => $endereco['numero'],
+                    ':complemento' => $endereco['complemento'] !== '' ? $endereco['complemento'] : null,
+                    ':idEndereco' => $idEndereco,
                     ':codDepartamento' => $codDep,
                     ':codCargo' => $codCargo,
                     ':id' => $id,
                 ]);
 
-                $this->salvarEndereco($conexao, $id, $endereco);
                 $conexao->commit();
                 return true;
             } catch (Throwable $erro) {
@@ -94,12 +98,12 @@
         // Busca os dados do perfil e seus relacionamentos.
         public function buscarPorId($funcional) {
                 $sql = "SELECT f.*, c.nomeCargo, d.nomeDepartamento AS nomeDepartamento, co.foto,
-                    e.cep, e.logradouro, e.numero, e.complemento, e.bairro, e.cidade, e.uf
+                    e.cep, e.logradouro, e.bairro, e.cidade, e.uf
                     FROM dboFuncionario f
                     INNER JOIN dboCargo c ON f.codCargo = c.codCargo
                     INNER JOIN dboDepartamento d ON f.codDepartamento = d.codDepartamento
                     LEFT JOIN dboConta co ON f.funcional = co.funcional
-                    LEFT JOIN dboEndereco e ON f.funcional = e.funcional
+                    LEFT JOIN dboEndereco e ON f.idEndereco = e.idEndereco
                     WHERE f.funcional = :funcional";
             $stmt = Conexao::getConn()->prepare($sql);
             $stmt->bindParam(':funcional', $funcional, PDO::PARAM_INT);
@@ -107,38 +111,29 @@
             return $stmt->fetch(PDO::FETCH_ASSOC);
         }
 
-        private function salvarEndereco(PDO $conexao, $funcional, array $endereco) {
+        private function salvarEndereco(PDO $conexao, array $endereco) {
             $sql = "INSERT INTO dboEndereco
-                    (funcional, cep, logradouro, numero, complemento, bairro, cidade, uf)
-                    VALUES (:funcional, :cep, :logradouro, :numero, :complemento, :bairro, :cidade, :uf)
-                    ON DUPLICATE KEY UPDATE cep = VALUES(cep), logradouro = VALUES(logradouro),
-                    numero = VALUES(numero), complemento = VALUES(complemento), bairro = VALUES(bairro),
-                    cidade = VALUES(cidade), uf = VALUES(uf)";
+                    (cep, logradouro, bairro, cidade, uf)
+                    VALUES (:cep, :logradouro, :bairro, :cidade, :uf)
+                    ON DUPLICATE KEY UPDATE
+                        idEndereco = LAST_INSERT_ID(idEndereco),
+                        logradouro = VALUES(logradouro),
+                        bairro = VALUES(bairro),
+                        cidade = VALUES(cidade),
+                        uf = VALUES(uf)";
             $stmt = $conexao->prepare($sql);
             $stmt->execute([
-                ':funcional' => $funcional,
                 ':cep' => $endereco['cep'],
                 ':logradouro' => $endereco['logradouro'],
-                ':numero' => $endereco['numero'],
-                ':complemento' => $endereco['complemento'] !== '' ? $endereco['complemento'] : null,
                 ':bairro' => $endereco['bairro'],
                 ':cidade' => $endereco['cidade'],
                 ':uf' => $endereco['uf'],
             ]);
-        }
-
-        private function formatarEndereco(array $endereco) {
-            $partes = [
-                $endereco['logradouro'],
-                $endereco['numero'],
-                $endereco['complemento'],
-                $endereco['bairro'],
-                $endereco['cidade'] . ' - ' . $endereco['uf'],
-                $endereco['cep'],
-            ];
-            return implode(', ', array_filter($partes, static function ($parte) {
-                return $parte !== '';
-            }));
+            $idEndereco = (int) $conexao->lastInsertId();
+            if ($idEndereco < 1) {
+                throw new RuntimeException('Não foi possível identificar o endereço salvo.');
+            }
+            return $idEndereco;
         }
 
         // Permite alterar apenas telefone e foto no próprio perfil.

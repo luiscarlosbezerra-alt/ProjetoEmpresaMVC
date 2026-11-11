@@ -7,58 +7,79 @@
         public function salvar() {
             // Recebe dados do formulário e cria o funcionário.
             if ($_SERVER['REQUEST_METHOD'] == "POST") {
+                $nome = trim((string) ($_POST['nome'] ?? ''));
                 $cpf = preg_replace('/\D/', '', (string) ($_POST['cpf'] ?? ''));
                 $telefone = preg_replace('/\D/', '', (string) ($_POST['telefone'] ?? ''));
                 $endereco = $this->validarEndereco($_POST['endereco'] ?? []);
-                if (strlen($cpf) !== 11 || ($telefone !== '' && !in_array(strlen($telefone), [10, 11], true)) || $endereco === false) {
+                $codDep = filter_var($_POST['codDepartamento'] ?? null, FILTER_VALIDATE_INT);
+                $codCargo = filter_var($_POST['codCargo'] ?? null, FILTER_VALIDATE_INT);
+                if ($nome === '' || strlen($nome) > 40
+                    || !$this->cpfValido($cpf)
+                    || ($telefone !== '' && !in_array(strlen($telefone), [10, 11], true))
+                    || $endereco === false
+                    || $codDep === false || $codDep < 1
+                    || $codCargo === false || $codCargo < 1
+                    || !(new Departamento())->buscarPorId($codDep)
+                    || !(new Cargo())->buscarPorId($codCargo)) {
                     $_SESSION['alerta'] = [
                         'icon' => 'error',
                         'title' => 'Confira os dados',
-                        'text' => 'Informe CPF, telefone e endereço nos formatos válidos.'
+                        'text' => 'Preencha os campos obrigatórios e informe CPF, telefone, endereço, departamento e cargo válidos.'
                     ];
                     header('Location: index.php?action=formFunc');
                     exit;
                 }
 
                 $model = new Funcionario();
-                if ($model->inserir(
-                    trim((string) ($_POST['nome'] ?? '')),
-                    $cpf,
-                    $telefone,
-                    $endereco,
-                    $_POST['codDepartamento'] ?? null,
-                    $_POST['codCargo'] ?? null
-                )) {
-                    echo "
-                    <!DOCTYPE html>
-                    <html>
-                    <head>
-                        <script src='https://cdn.jsdelivr.net/npm/sweetalert2@11'></script>
-                    </head>
-                    <body>
-                        <script>
-                            Swal.fire({
-                                title: 'Sucesso!',
-                                text: 'Funcionário salvo com sucesso!',
-                                icon: 'success',
-                                confirmButtonText: 'OK'
-                            }).then(() => {
-                                window.location.href = 'index.php?action=listaFunc';
-                            });
-                        </script>
-                    </body>
-                    </html>
-                    ";
+                try {
+                    $salvo = $model->inserir(
+                        $nome,
+                        $cpf,
+                        $telefone,
+                        $endereco,
+                        $codDep,
+                        $codCargo
+                    );
+                } catch (PDOException $erro) {
+                    $sqlState = $erro->errorInfo[0] ?? (string) $erro->getCode();
+                    $codigoMysql = (int) ($erro->errorInfo[1] ?? 0);
+                    if ($sqlState === '23000' && $codigoMysql === 1452) {
+                        $_SESSION['alerta'] = [
+                            'icon' => 'error',
+                            'title' => 'Referência inválida',
+                            'text' => 'O departamento ou cargo selecionado não está mais disponível.'
+                        ];
+                        header('Location: index.php?action=formFunc');
+                        exit;
+                    }
+                    if ($sqlState !== '23000' || $codigoMysql !== 1062) {
+                        throw $erro;
+                    }
+                    $_SESSION['alerta'] = [
+                        'icon' => 'error',
+                        'title' => 'CPF já cadastrado',
+                        'text' => 'Já existe um funcionário cadastrado com este CPF.'
+                    ];
+                    header('Location: index.php?action=formFunc');
+                    exit;
+                }
+
+                if ($salvo) {
+                    $_SESSION['alerta'] = [
+                        'icon' => 'success',
+                        'title' => 'Funcionário cadastrado!',
+                        'text' => 'O funcionário foi salvo com sucesso.'
+                    ];
+                    header('Location: index.php?action=listaFunc');
                     exit;
                 } else {
-                    echo "<script src='https://cdn.jsdelivr.net/npm/sweetalert2@11'></script>
-                    <script>
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Erro ao salvar',
-                            text: 'Não foi possível cadastrar o funcionário.'
-                        }).then(() => window.history.back());
-                    </script>";
+                    $_SESSION['alerta'] = [
+                        'icon' => 'error',
+                        'title' => 'Erro ao salvar',
+                        'text' => 'Não foi possível cadastrar o funcionário.'
+                    ];
+                    header('Location: index.php?action=formFunc');
+                    exit;
                 }
             }
         }
@@ -79,28 +100,64 @@
         public function atualizar() {
             // Salva os dados administrativos alterados.
             if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+                $id = filter_var($_POST['funcional'] ?? null, FILTER_VALIDATE_INT);
+                $nome = trim((string) ($_POST['nome'] ?? ''));
                 $cpf = preg_replace('/\D/', '', (string) ($_POST['cpf'] ?? ''));
                 $telefone = preg_replace('/\D/', '', (string) ($_POST['telefone'] ?? ''));
                 $endereco = $this->validarEndereco($_POST['endereco'] ?? []);
-                if (strlen($cpf) !== 11 || ($telefone !== '' && !in_array(strlen($telefone), [10, 11], true)) || $endereco === false) {
+                $codDep = filter_var($_POST['codDepartamento'] ?? null, FILTER_VALIDATE_INT);
+                $codCargo = filter_var($_POST['codCargo'] ?? null, FILTER_VALIDATE_INT);
+                if ($id === false || $id < 1
+                    || $nome === '' || strlen($nome) > 40
+                    || !$this->cpfValido($cpf)
+                    || ($telefone !== '' && !in_array(strlen($telefone), [10, 11], true))
+                    || $endereco === false
+                    || $codDep === false || $codDep < 1
+                    || $codCargo === false || $codCargo < 1
+                    || !(new Departamento())->buscarPorId($codDep)
+                    || !(new Cargo())->buscarPorId($codCargo)) {
                     $_SESSION['alerta'] = [
                         'icon' => 'error',
                         'title' => 'Confira os dados',
                         'text' => 'Informe CPF, telefone e endereço nos formatos válidos.'
                     ];
-                    header('Location: index.php?action=editarFunc&id=' . rawurlencode((string) ($_POST['funcional'] ?? '')));
+                    header('Location: index.php?action=editarFunc&id=' . ($id !== false && $id > 0 ? $id : ''));
                     exit;
                 }
 
-                $sucesso = (new Funcionario())->atualizar(
-                    $_POST['funcional'],
-                    trim((string) ($_POST['nome'] ?? '')),
-                    $cpf,
-                    $telefone,
-                    $endereco,
-                    $_POST['codDepartamento'] ?? null,
-                    $_POST['codCargo'] ?? null
-                );
+                try {
+                    $sucesso = (new Funcionario())->atualizar(
+                        $id,
+                        $nome,
+                        $cpf,
+                        $telefone,
+                        $endereco,
+                        $codDep,
+                        $codCargo
+                    );
+                } catch (PDOException $erro) {
+                    $sqlState = $erro->errorInfo[0] ?? (string) $erro->getCode();
+                    $codigoMysql = (int) ($erro->errorInfo[1] ?? 0);
+                    if ($sqlState === '23000' && $codigoMysql === 1452) {
+                        $_SESSION['alerta'] = [
+                            'icon' => 'error',
+                            'title' => 'Referência inválida',
+                            'text' => 'O departamento ou cargo selecionado não está mais disponível.'
+                        ];
+                        header('Location: index.php?action=editarFunc&id=' . $id);
+                        exit;
+                    }
+                    if ($sqlState !== '23000' || $codigoMysql !== 1062) {
+                        throw $erro;
+                    }
+                    $_SESSION['alerta'] = [
+                        'icon' => 'error',
+                        'title' => 'CPF já cadastrado',
+                        'text' => 'Outro funcionário já utiliza este CPF.'
+                    ];
+                    header('Location: index.php?action=editarFunc&id=' . $id);
+                    exit;
+                }
                 // Guarda o resultado para o cabeçalho exibir após o redirect.
                 $_SESSION['alerta'] = [
                     'icon' => $sucesso ? 'success' : 'error',
@@ -138,16 +195,32 @@
 
             return $endereco;
         }
+
+        private function cpfValido(string $cpf): bool {
+            return preg_match('/^\d{11}$/', $cpf) === 1;
+        }
         public function excluir() {
+            if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+                header('Location: index.php?action=listaFunc');
+                exit;
+            }
+
             // Exclui apenas funcionários sem conta vinculada.
             try {
-                (new Funcionario())->deletar($_GET['id'] ?? null);
+                (new Funcionario())->deletar($_POST['id'] ?? null);
                 // Informa à lista que a exclusão foi concluída.
                 $_SESSION['alerta'] = ['icon' => 'success', 'title' => 'Funcionário excluído!', 'text' => 'O registro foi removido.'];
             }
             catch (PDOException $erro) {
-                // A conta vinculada precisa ser removida antes do funcionário.
-                $_SESSION['alerta'] = ['icon' => 'error', 'title' => 'Não foi possível excluir', 'text' => 'Exclua primeiro a conta de acesso vinculada.'];
+                if (($erro->errorInfo[0] ?? (string) $erro->getCode()) !== '23000'
+                    || (int) ($erro->errorInfo[1] ?? 0) !== 1451) {
+                    throw $erro;
+                }
+                $_SESSION['alerta'] = [
+                    'icon' => 'error',
+                    'title' => 'Não foi possível excluir',
+                    'text' => 'Remova a conta de acesso e verifique solicitações associadas antes de excluir o funcionário.'
+                ];
             }
             header('Location: index.php?action=listaFunc'); exit;
         }

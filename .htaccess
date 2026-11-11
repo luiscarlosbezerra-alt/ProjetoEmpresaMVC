@@ -1,16 +1,23 @@
 # Bloqueia a listagem de diretórios (Segurança)
 Options -Indexes
 
-# Define páginas de erro persolanizadas
-ErrorDocument 404 /Index.php?action=home
-ErrorDocument 500 /Index.php?action=home
-
-# Garante que arquivos sensíveis  (como os de configuração)
-# não sejam acessadosdiretamente
+# Bloqueia o acesso direto a arquivos ocultos e scripts internos.
 <FilesMatch "^\.">
-    Order allow,deny
-    Deny from allow
+    Require all denied
 </FilesMatch>
+
+# O SQL contém a estrutura e dados iniciais do sistema.
+<FilesMatch "(?i)\.sql$">
+    Require all denied
+</FilesMatch>
+
+# Bloqueia scripts PHP internos sem impedir o carregamento de CSS e imagens.
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule ^(?:view|model|controller)/.*\.php$ - [F,L,NC]
+    RewriteRule ^config(?:/|$) - [F,L,NC]
+    RewriteRule ^database(?:/|$) - [F,L,NC]
+</IfModule>
 
 # Ativa compressão para carregar mais rápido
 <IfModule mod_deflate.c>

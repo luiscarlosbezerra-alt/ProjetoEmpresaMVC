@@ -18,7 +18,7 @@ $perfilConta = ($_SESSION['usuario_perfil'] ?? '') === 'admin' ? 'Administrador'
     <meta charset="UTF-8">
     <title>Sistema Empresa</title>
 
-    <link rel="stylesheet" href="/ProjetoEmpresaMVC//view/css/estilo.css">
+    <link rel="stylesheet" href="assets/css/estilo.css">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 
@@ -128,13 +128,32 @@ $perfilConta = ($_SESSION['usuario_perfil'] ?? '') === 'admin' ? 'Administrador'
 
                 <div class="dropdown-content">
                     <a href="index.php?action=login">Entrar</a>
-                    <a href="index.php?action=formConta">Criar conta</a>
                 </div>
             </div>
 
         <?php endif; ?>
     </nav>
 </header>
+
+<?php
+$alertasValidos = ['success', 'error', 'warning', 'info'];
+$tipoAlerta = is_array($alerta) && in_array($alerta['icon'] ?? '', $alertasValidos, true)
+    ? $alerta['icon']
+    : 'error';
+?>
+<?php if (is_array($alerta) && isset($alerta['text'])): ?>
+    <div class="flash-message flash-message-<?= htmlspecialchars($tipoAlerta, ENT_QUOTES, 'UTF-8') ?>"
+         role="<?= $tipoAlerta === 'error' ? 'alert' : 'status' ?>"
+         aria-live="<?= $tipoAlerta === 'error' ? 'assertive' : 'polite' ?>">
+        <span class="flash-message-icon" aria-hidden="true"><?= $tipoAlerta === 'success' ? '&#10003;' : '!' ?></span>
+        <div>
+            <?php if (!empty($alerta['title'])): ?>
+                <strong><?= htmlspecialchars((string) $alerta['title'], ENT_QUOTES, 'UTF-8') ?></strong>
+            <?php endif; ?>
+            <p><?= htmlspecialchars((string) $alerta['text'], ENT_QUOTES, 'UTF-8') ?></p>
+        </div>
+    </div>
+<?php endif; ?>
 
 <div class="container">
 
@@ -183,7 +202,7 @@ function confirmarSaida(event, url) {
     return false;
 }
 
-function confirmarExclusao(event, url, tipo) {
+function confirmarExclusao(event, formulario, tipo) {
     // Substitui a confirmação nativa por uma caixa visual padronizada.
     event.preventDefault();
 
@@ -198,7 +217,7 @@ function confirmarExclusao(event, url, tipo) {
         cancelButtonText: 'Cancelar'
     }).then((resultado) => {
         if (resultado.isConfirmed) {
-            window.location.href = url;
+            formulario.submit();
         }
     });
 
@@ -253,10 +272,3 @@ if (accountMenuButton && accountMenuDropdown) {
     });
 }
 </script>
-
-<?php if ($alerta): ?>
-<!-- Exibe o resultado da operação depois do redirecionamento para a lista. -->
-<script>
-Swal.fire(<?= json_encode($alerta, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>);
-</script>
-<?php endif; ?>

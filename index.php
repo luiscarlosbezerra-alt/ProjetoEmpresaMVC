@@ -1,3 +1,2 @@
 <?php
-    require_once "controller/routes.php";
-?>
+require_once __DIR__ . '/controller/routes.php';

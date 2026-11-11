@@ -1,6 +1,6 @@
 <?php 
     // Lista departamentos com as ações de edição e exclusão.
-    include __DIR__."/INCLUDE/cabecalho.php";
+    include __DIR__."/include/cabecalho.php";
 ?>
 
     <h2>Relatório de Departamentos</h2>
@@ -22,7 +22,11 @@
                     <td><?= htmlspecialchars($d['nomeDepartamento']) ?></td>
                     <td class="acoes-tabela">
                         <a class="btn-acao btn-editar" href="index.php?action=editarDep&id=<?=$d['codDepartamento']?>">Editar</a>
-                        <a class="btn-acao btn-excluir" href="index.php?action=excluirDep&id=<?=$d['codDepartamento']?>" onclick="return confirmarExclusao(event, this.href, 'departamento');">Excluir</a>
+                        <form class="form-exclusao" action="index.php?action=excluirDep" method="post" onsubmit="return confirmarExclusao(event, this, 'departamento');">
+                            <input type="hidden" name="id" value="<?= (int) $d['codDepartamento'] ?>">
+                            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(TokenCsrf::obter(), ENT_QUOTES, 'UTF-8') ?>">
+                            <button class="btn-acao btn-excluir" type="submit">Excluir</button>
+                        </form>
                     </td>
                 </tr>
                 <?php endforeach; ?>
@@ -37,5 +41,5 @@
     </table>
 
 <?php 
-    include __DIR__."/INCLUDE/rodape.php";
+    include __DIR__."/include/rodape.php";
 ?>

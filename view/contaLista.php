@@ -23,13 +23,13 @@ include __DIR__ . '/include/cabecalho.php'; ?>
                 <tr>
                     <td style="text-align: center;">
                         <?php
-                            $nomeFoto = $conta['foto'] ?? '';
-                            $foto = __DIR__ . '/img/foto de perfil/' . $nomeFoto;
+                            $nomeFoto = basename((string) ($conta['foto'] ?? ''));
+                            $foto = dirname(__DIR__) . '/assets/img/perfil/' . $nomeFoto;
                             $caminhoFoto = file_exists($foto)
-                                ? 'view/img/foto%20de%20perfil/' . rawurlencode($nomeFoto)
-                                : 'view/img/foto%20de%20perfil/default.jpg';
+                                ? 'assets/img/perfil/' . rawurlencode($nomeFoto)
+                                : 'assets/img/perfil/default-avatar.svg';
                         ?>
-                        <img src="/ProjetoEmpresaMVC/<?= $caminhoFoto ?>" 
+                        <img src="<?= htmlspecialchars($caminhoFoto, ENT_QUOTES, 'UTF-8') ?>"
                             alt="Perfil" 
                             class="foto-perfil-lista">
                     </td>
@@ -43,7 +43,11 @@ include __DIR__ . '/include/cabecalho.php'; ?>
                             && (int) $conta['nivelAcesso'] === 0 && !$temOutroAdministrador): ?>
                             <span class="conta-admin-protegido" title="Cadastre outro administrador para poder excluir esta conta.">Último administrador</span>
                         <?php else: ?>
-                            <a class="btn-acao btn-excluir" href="index.php?action=excluirConta&amp;id=<?= (int) $conta['funcional'] ?>" onclick="return confirmarExclusao(event, this.href, 'conta');">Excluir</a>
+                            <form class="form-exclusao" action="index.php?action=excluirConta" method="post" onsubmit="return confirmarExclusao(event, this, 'conta');">
+                                <input type="hidden" name="id" value="<?= (int) $conta['funcional'] ?>">
+                                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(TokenCsrf::obter(), ENT_QUOTES, 'UTF-8') ?>">
+                                <button class="btn-acao btn-excluir" type="submit">Excluir</button>
+                            </form>
                         <?php endif; ?>
                     </td>
                 </tr>

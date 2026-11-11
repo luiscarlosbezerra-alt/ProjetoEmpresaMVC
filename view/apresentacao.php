@@ -23,7 +23,6 @@
 
         <div style="display: flex; justify-content: center; gap: 16px; flex-wrap: wrap; margin-top: 20px;">
             <a href="index.php?action=login" class="btn-save" style="display: inline-block; text-decoration: none; text-align: center;">Entrar no sistema</a>
-            <a href="index.php?action=formConta" class="btn-save" style="display: inline-block; text-decoration: none; text-align: center; background: #0f172a;">Criar conta</a>
         </div>
     </section>
 </main>

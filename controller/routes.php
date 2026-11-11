@@ -5,10 +5,15 @@
     require_once __DIR__ . '/funcController.php';
     require_once __DIR__ . '/contaController.php';
     require_once __DIR__ . '/solicitacaoController.php';
+    require_once __DIR__ . '/TokenCsrf.php';
 
     if (session_status() === PHP_SESSION_NONE) {
         session_start();
     }
+
+    header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+    header('Pragma: no-cache');
+    header('Expires: Thu, 01 Jan 1970 00:00:00 GMT');
 
     // $action = strtolower(trim((string)($_GET['action'] ?? 'apresentacao')));
     $action = trim((string)($_GET['action'] ?? 'apresentacao'));
@@ -26,20 +31,29 @@
     $controllerSolicitacao = new SolicitacaoController();
 
     function verificarAdmin() {
-        // Restringe operações administrativas a usuários com nível 0.
-        if(!isset($_SESSION['usuario_perfil']) || $_SESSION['usuario_perfil'] !== 'admin'){
-            echo "<script src='https://cdn.jsdelivr.net/npm/sweetalert2@11'></script>
-                <script>
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Acesso negado',
-                    text: 'Esta funcionalidade é restrita a administradores.'
-                }).then(() => {
-                    window.location.href = 'index.php?action=home';
-                });
-                </script>";
-            exit;
+        $funcional = (int) ($_SESSION['usuario_funcional'] ?? 0);
+        $nivelAcesso = $funcional > 0 ? (new Conta())->buscarNivelAcesso($funcional) : null;
+
+        if ($nivelAcesso === 0) {
+            $_SESSION['usuario_nivel'] = $nivelAcesso;
+            $_SESSION['usuario_perfil'] = 'admin';
+            return;
         }
+
+        if ($nivelAcesso === null) {
+            unset($_SESSION['usuario_funcional'], $_SESSION['usuario_nome'], $_SESSION['usuario_nivel'], $_SESSION['usuario_perfil']);
+        } else {
+            $_SESSION['usuario_nivel'] = $nivelAcesso;
+            $_SESSION['usuario_perfil'] = 'user';
+        }
+
+        $_SESSION['alerta'] = [
+            'icon' => 'error',
+            'title' => 'Acesso negado',
+            'text' => 'Esta funcionalidade é restrita a administradores.'
+        ];
+        header('Location: index.php?action=' . ($funcional > 0 && $nivelAcesso !== null ? 'home' : 'login'));
+        exit;
     }
     
     function verificarLogado() {
@@ -48,6 +62,16 @@
             header("Location: index.php?action=login");
             exit;
         }
+
+        $nivelAcesso = (new Conta())->buscarNivelAcesso((int) $_SESSION['usuario_funcional']);
+        if ($nivelAcesso === null) {
+            unset($_SESSION['usuario_funcional'], $_SESSION['usuario_nome'], $_SESSION['usuario_nivel'], $_SESSION['usuario_perfil']);
+            header("Location: index.php?action=login");
+            exit;
+        }
+
+        $_SESSION['usuario_nivel'] = $nivelAcesso;
+        $_SESSION['usuario_perfil'] = $nivelAcesso === 0 ? 'admin' : 'user';
     }
 
     switch ($action) {
@@ -78,7 +102,11 @@
         // Abre, salva ou exclui um cargo existente.
         case 'editarCargo': verificarAdmin(); $controller->editar(); break;
         case 'atualizarCargo': verificarAdmin(); $controller->atualizar(); break;
-        case 'excluirCargo': verificarAdmin(); $controller->excluir(); break;
+        case 'excluirCargo':
+            verificarAdmin();
+            TokenCsrf::exigirPost('listaCargo');
+            $controller->excluir();
+            break;
 
         // DEPARTAMENTOS
         case 'formDep':
@@ -96,7 +124,11 @@
         // Abre, salva ou exclui um departamento existente.
         case 'editarDep': verificarAdmin(); $controller2->editar(); break;
         case 'atualizarDep': verificarAdmin(); $controller2->atualizar(); break;
-        case 'excluirDep': verificarAdmin(); $controller2->excluir(); break;
+        case 'excluirDep':
+            verificarAdmin();
+            TokenCsrf::exigirPost('listaDep');
+            $controller2->excluir();
+            break;
 
         // FUNCIONÁRIOS
         case 'formFunc': 
@@ -115,34 +147,44 @@
             // incluir a view
             include __DIR__."/../view/funcForm.php";
             break;
-            case 'listaFunc':
-                verificarAdmin();
-                $controller3->listarTodos();
-                break;
-            case 'salvarFunc':
-                verificarAdmin();
-                $controller3->salvar();
-                break;
-            // Abre, salva ou exclui um funcionário existente.
-            case 'editarFunc': verificarAdmin(); $controller3->editar(); break;
-            case 'atualizarFunc': verificarAdmin(); $controller3->atualizar(); break;
-            case 'excluirFunc': verificarAdmin(); $controller3->excluir(); break;
+        case 'listaFunc':
+            verificarAdmin();
+            $controller3->listarTodos();
+            break;
+        case 'salvarFunc':
+            verificarAdmin();
+            $controller3->salvar();
+            break;
+        // Abre, salva ou exclui um funcionário existente.
+        case 'editarFunc': verificarAdmin(); $controller3->editar(); break;
+        case 'atualizarFunc': verificarAdmin(); $controller3->atualizar(); break;
+        case 'excluirFunc':
+            verificarAdmin();
+            TokenCsrf::exigirPost('listaFunc');
+            $controller3->excluir();
+            break;
 
         // CONTAS
         case 'formConta':
-            include __DIR__."/../view/contaForm.php";
+            verificarAdmin();
+            $controller4->formularioConta();
             break;
         case 'listaConta':
             verificarAdmin();
             $controller4->listarConta();
             break;
         case 'salvarConta':
+            verificarAdmin();
             $controller4->salvarConta();
             break;
         // Permite ao administrador editar ou excluir uma conta de acesso.
         case 'editarConta': verificarAdmin(); $controller4->editar(); break;
         case 'atualizarConta': verificarAdmin(); $controller4->atualizar(); break;
-        case 'excluirConta': verificarAdmin(); $controller4->excluir(); break;
+        case 'excluirConta':
+            verificarAdmin();
+            TokenCsrf::exigirPost('listaConta');
+            $controller4->excluir();
+            break;
 
         // LOGIN
         case 'login':
@@ -191,10 +233,22 @@
 
         // SAIR DO SISTEMA
         case 'logout':
+            $_SESSION = [];
+            if (ini_get('session.use_cookies')) {
+                $cookie = session_get_cookie_params();
+                setcookie(
+                    session_name(),
+                    '',
+                    time() - 42000,
+                    $cookie['path'],
+                    $cookie['domain'],
+                    $cookie['secure'],
+                    $cookie['httponly']
+                );
+            }
             session_destroy();
-            header("Location: index.php?action=apresentacao");
+            header('Location: index.php?action=login');
             exit;
-            break;
 
         default:
             include __DIR__ . "/../view/apresentacao.php";

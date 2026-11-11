@@ -12,11 +12,12 @@
             name="nome" 
             class="form-input" 
             required 
+            maxlength="50"
             placeholder="Ex: Recursos Humanos"
         > <br>
         <button type="submit" class="btn-save">Gravar Departamento</button>
     </form>
 
 <?php 
-    include __DIR__."/INCLUDE/rodape.php";
+    include __DIR__."/include/rodape.php";
 ?>

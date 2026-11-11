@@ -1,6 +1,6 @@
 <?php 
     // Lista cargos e oferece as ações administrativas do CRUD.
-    include __DIR__."/INCLUDE/cabecalho.php";
+    include __DIR__."/include/cabecalho.php";
 ?>
 
     <h2>Relatório de Cargos</h2>
@@ -27,7 +27,11 @@
                     </td>
                     <td class="acoes-tabela">
                         <a class="btn-acao btn-editar" href="index.php?action=editarCargo&id=<?=$c['codCargo']?>">Editar</a>
-                        <a class="btn-acao btn-excluir" href="index.php?action=excluirCargo&id=<?=$c['codCargo']?>" onclick="return confirmarExclusao(event, this.href, 'cargo');">Excluir</a>
+                        <form class="form-exclusao" action="index.php?action=excluirCargo" method="post" onsubmit="return confirmarExclusao(event, this, 'cargo');">
+                            <input type="hidden" name="id" value="<?= (int) $c['codCargo'] ?>">
+                            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(TokenCsrf::obter(), ENT_QUOTES, 'UTF-8') ?>">
+                            <button class="btn-acao btn-excluir" type="submit">Excluir</button>
+                        </form>
                     </td>
                 </tr>
                 <?php endforeach; ?>
@@ -43,5 +47,5 @@
     </table>
 
 <?php 
-    include __DIR__."/INCLUDE/rodape.php";
+    include __DIR__."/include/rodape.php";
 ?>

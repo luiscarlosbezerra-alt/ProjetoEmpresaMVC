@@ -16,5 +16,5 @@
     </form>
 
 <?php 
-    include __DIR__."/INCLUDE/rodape.php";
+    include __DIR__."/include/rodape.php";
 ?>

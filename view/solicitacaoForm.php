@@ -20,11 +20,11 @@ $csrfToken = $csrfToken ?? '';
     <div class="solicitacao-datas">
         <div>
             <label class="form-label" for="dataInicio">Data inicial</label>
-            <input class="form-input" id="dataInicio" type="date" name="dataInicio" required>
+            <input class="form-input" id="dataInicio" type="text" name="dataInicio" required maxlength="10" inputmode="numeric" placeholder="dd/mm/aaaa" data-mask="data">
         </div>
         <div>
             <label class="form-label" for="dataFim">Data final</label>
-            <input class="form-input" id="dataFim" type="date" name="dataFim" required>
+            <input class="form-input" id="dataFim" type="text" name="dataFim" required maxlength="10" inputmode="numeric" placeholder="dd/mm/aaaa" data-mask="data">
         </div>
     </div>
 

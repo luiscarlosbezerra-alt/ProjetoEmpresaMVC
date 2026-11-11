@@ -6,6 +6,7 @@
     <p>Luis Carlos Bezerra da Silva</p>
 </footer>
 
-<script src="scripts/formularios.js" defer></script>
+<script src="assets/js/formularios.js" defer></script>
+<script src="assets/js/cep.js" defer></script>
 </body>
 </html>

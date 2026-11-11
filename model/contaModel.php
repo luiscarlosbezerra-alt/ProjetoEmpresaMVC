@@ -4,15 +4,42 @@
 
     class Conta {
         // Cria uma conta armazenando a senha protegida por hash.
-        public function inserir($funcional, $login, $senha, $foto) {
+        public function inserir($funcional, $login, $senha, $foto, $nivelAcesso) {
+            if (!in_array((int) $nivelAcesso, [0, 1], true)) {
+                throw new InvalidArgumentException('Nível de acesso inválido.');
+            }
+
             $senhaHash = password_hash($senha, PASSWORD_DEFAULT);
-            $sql = "INSERT INTO dboConta (funcional, login, senha, foto) VALUES (:f, :l, :s, :i)";
+            $sql = "INSERT INTO dboConta (funcional, login, senha, foto, nivelAcesso)
+                    VALUES (:f, :l, :s, :i, :nivel)";
             $stmt = Conexao::getConn()->prepare($sql);
             $stmt->bindParam(':f', $funcional);
             $stmt->bindParam(':l', $login);
             $stmt->bindParam(':s', $senhaHash);
             $stmt->bindParam(':i', $foto);
+            $stmt->bindValue(':nivel', (int) $nivelAcesso, PDO::PARAM_INT);
             return $stmt->execute();
+        }
+
+        public function listarFuncionariosSemConta() {
+            $sql = "SELECT f.funcional, f.nome, f.cpf
+                    FROM dboFuncionario f
+                    LEFT JOIN dboConta c ON c.funcional = f.funcional
+                    WHERE c.funcional IS NULL
+                    ORDER BY f.nome, f.funcional";
+            return Conexao::getConn()->query($sql)->fetchAll(PDO::FETCH_ASSOC);
+        }
+
+        public function buscarFuncionarioSemConta($funcional) {
+            $stmt = Conexao::getConn()->prepare(
+                "SELECT f.funcional, f.nome
+                 FROM dboFuncionario f
+                 LEFT JOIN dboConta c ON c.funcional = f.funcional
+                 WHERE f.funcional = :funcional AND c.funcional IS NULL"
+            );
+            $stmt->bindValue(':funcional', $funcional, PDO::PARAM_INT);
+            $stmt->execute();
+            return $stmt->fetch(PDO::FETCH_ASSOC);
         }
 
         // Lista contas junto com os nomes dos funcionários.
@@ -45,27 +72,75 @@
             $stmt->execute();
             return $stmt->fetch(PDO::FETCH_ASSOC);
         }
+
+        public function buscarNivelAcesso($funcional) {
+            $stmt = Conexao::getConn()->prepare(
+                "SELECT nivelAcesso FROM dboConta WHERE funcional = :funcional"
+            );
+            $stmt->bindValue(':funcional', $funcional, PDO::PARAM_INT);
+            $stmt->execute();
+            $nivel = $stmt->fetchColumn();
+            return $nivel === false ? null : (int) $nivel;
+        }
+
         // Atualiza login, nível e opcionalmente senha e foto.
         public function atualizar($funcional, $login, $nivel, $senha = null, $foto = null) {
-            $campos = 'login = :login, nivelAcesso = :nivel';
-            if (!empty($senha)) { $campos .= ', senha = :senha'; }
-            if ($foto !== null) { $campos .= ', foto = :foto'; }
-            $stmt = Conexao::getConn()->prepare("UPDATE dboConta SET $campos WHERE funcional = :funcional");
-            $stmt->bindParam(':login', $login);
-            $stmt->bindValue(':nivel', $nivel, PDO::PARAM_INT);
-            if (!empty($senha)) {
-                $senhaHash = password_hash($senha, PASSWORD_DEFAULT);
-                $stmt->bindParam(':senha', $senhaHash);
+            $conexao = Conexao::getConn();
+            $conexao->beginTransaction();
+
+            try {
+                if ($nivel === 1) {
+                    $administradores = $this->bloquearAdministradores($conexao);
+                    $ehAdministrador = in_array((int) $funcional, $administradores, true);
+                    if ($ehAdministrador && count($administradores) <= 1) {
+                        throw new DomainException('O sistema precisa manter ao menos um administrador.');
+                    }
+                }
+
+                $campos = 'login = :login, nivelAcesso = :nivel';
+                if (!empty($senha)) { $campos .= ', senha = :senha'; }
+                if ($foto !== null) { $campos .= ', foto = :foto'; }
+                $stmt = $conexao->prepare("UPDATE dboConta SET $campos WHERE funcional = :funcional");
+                $stmt->bindParam(':login', $login);
+                $stmt->bindValue(':nivel', $nivel, PDO::PARAM_INT);
+                if (!empty($senha)) {
+                    $senhaHash = password_hash($senha, PASSWORD_DEFAULT);
+                    $stmt->bindParam(':senha', $senhaHash);
+                }
+                if ($foto !== null) { $stmt->bindParam(':foto', $foto); }
+                $stmt->bindValue(':funcional', $funcional, PDO::PARAM_INT);
+                $sucesso = $stmt->execute();
+                $conexao->commit();
+                return $sucesso;
+            } catch (Throwable $erro) {
+                if ($conexao->inTransaction()) {
+                    $conexao->rollBack();
+                }
+                throw $erro;
             }
-            if ($foto !== null) { $stmt->bindParam(':foto', $foto); }
-            $stmt->bindValue(':funcional', $funcional, PDO::PARAM_INT);
-            return $stmt->execute();
         }
         // Remove a conta de acesso sem remover o funcionário.
         public function deletar($funcional) {
-            $stmt = Conexao::getConn()->prepare("delete from dboConta where funcional = :funcional");
-            $stmt->bindValue(':funcional', $funcional, PDO::PARAM_INT);
-            return $stmt->execute();
+            $conexao = Conexao::getConn();
+            $conexao->beginTransaction();
+
+            try {
+                $administradores = $this->bloquearAdministradores($conexao);
+                if (in_array((int) $funcional, $administradores, true) && count($administradores) <= 1) {
+                    throw new DomainException('O sistema precisa manter ao menos um administrador.');
+                }
+
+                $stmt = $conexao->prepare("delete from dboConta where funcional = :funcional");
+                $stmt->bindValue(':funcional', $funcional, PDO::PARAM_INT);
+                $sucesso = $stmt->execute();
+                $conexao->commit();
+                return $sucesso;
+            } catch (Throwable $erro) {
+                if ($conexao->inTransaction()) {
+                    $conexao->rollBack();
+                }
+                throw $erro;
+            }
         }
 
         // Consulta uma conta pelo login usado na autenticação.
@@ -94,6 +169,13 @@
         public function atualizarSenha($funcional, $senha) {
             $senhaHash = password_hash($senha, PASSWORD_DEFAULT);
             return $this->atualizarSenhaHash($funcional, $senhaHash);
+        }
+
+        private function bloquearAdministradores(PDO $conexao): array {
+            $stmt = $conexao->query(
+                'SELECT funcional FROM dboConta WHERE nivelAcesso = 0 FOR UPDATE'
+            );
+            return array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN));
         }
     }
 ?>
